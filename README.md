@@ -72,14 +72,6 @@ pip install numpy scipy scikit-learn scikit-image opencv-python h5py pandas matp
 python main.py
 ```
 
-The dataset is not in the repository. Put it in a folder `data/` next to `main.py`:
-
-```
-data/
-  query/       query_lite.json,    images/
-  database/    database_lite.json, images/
-  london_lite_gt.h5               (contains the `sim` and `fov` matrices)
-```
 
 The first run extracts keypoints and caches them in `cache/` (a few minutes); later runs reuse the cache. The cache file name contains the descriptor, keypoint count and image size, so changing those settings never reuses an old cache. A full run with 3 seeds takes a while on CPU (5-fold CNN training, Fisher vectors and geometric verification are repeated for every seed).
 
