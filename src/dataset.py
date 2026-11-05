@@ -23,10 +23,10 @@ def load_json_image_list(json_path, image_dir):
         img_path = image_dir / Path(fn).name
         img = cv2.imread(str(img_path))
         
-        if img is not None:
-            images.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        else:
-            print(f"[WARNING] Could not load image: {img_path}")
+        if img is None:
+            # Fail loudly: skipping an image would shift every later index against the ground truth.
+            raise FileNotFoundError(f"[ERROR] Could not read image: {img_path}")
+        images.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
     if not images:
         raise ValueError(f"[ERROR] Failed to load any valid images from {json_path}")
@@ -35,10 +35,12 @@ def load_json_image_list(json_path, image_dir):
     return images
 
 
-def load_ground_truth_h5(filepath, key="fov"):
-    """Loads ground truth matrix from an HDF5 file."""
+def load_ground_truth_h5(filepath, key="fov", as_bool=False):
+    """Loads a ground truth matrix from an HDF5 file.
+    key="sim" -> binary relevance (use as_bool=True), key="fov" -> graded overlap in [0, 1]."""
     with h5py.File(filepath, "r") as f:
-        return np.array(f[key], dtype=np.float32)
+        arr = np.array(f[key])
+    return arr.astype(bool) if as_bool else arr.astype(np.float32)
 
 
 class SpatialWordDataset(Dataset):
@@ -55,11 +57,11 @@ class SpatialWordDataset(Dataset):
 
 class TripletDataset(Dataset):
     """Constructs (Anchor, Positive, Negative) triplets based on FOV overlap."""
-    def __init__(self, q_grids, db_grids, fov_gt_matrix, pos_thresh=0.20, neg_thresh=0.05, max_triplets_per_query=10):
+    def __init__(self, q_grids, db_grids, fov_gt_matrix, pos_thresh=0.20, neg_thresh=0.05, max_triplets_per_query=10, seed=42):
         self.q_grids = q_grids
         self.db_grids = db_grids
         self.triplets = []
-        np.random.seed(42)
+        rng = np.random.RandomState(seed)
         is_self_match = (q_grids.shape[0] == db_grids.shape[0])
 
         # For each query index, see which database images are positive or negative
@@ -73,14 +75,14 @@ class TripletDataset(Dataset):
             if len(pos_indices) == 0 or len(neg_indices) == 0:
                 continue
 
-            sampled_positives = np.random.choice(
+            sampled_positives = rng.choice(
                 pos_indices, 
                 size=min(len(pos_indices), max_triplets_per_query), 
                 replace=False
             )
 
             for p_idx in sampled_positives:
-                n_idx = np.random.choice(neg_indices)
+                n_idx = rng.choice(neg_indices)
                 self.triplets.append((q_idx, p_idx, n_idx))
 
         print(f"[TripletDataset] Generated {len(self.triplets)} triplets.")
