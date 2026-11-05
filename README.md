@@ -2,7 +2,6 @@
 
 Retrieval of relevant street-level images (query -> database) with Bag-of-Visual-Words (BoVW) and several improvements. All methods share **one front end** and **one evaluation**, and every number in the final table comes from a single run of `main.py`.
 
-Authors: Kishor and Nathan.
 
 ## Pipeline
 
